@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Tenant, Floor, Room, Equipment, Holiday, ApprovalRule, Booking } from '../types';
 import { getTenantData, getAllTenants, getBookingsByDate } from '../mock';
+import { useUserStore } from './userStore';
 
 interface TenantState {
   currentTenantId: string | null;
@@ -15,10 +16,19 @@ interface TenantState {
   selectedDate: string;
   bookings: Booking[];
   
-  setCurrentTenant: (tenantId: string | null) => void;
+  setCurrentTenant: (tenantId: string | null, force?: boolean) => void;
   setSelectedDate: (date: string) => void;
   refreshBookings: () => void;
+  ensureAuthoritativeTenant: () => void;
 }
+
+const getAuthoritativeTenantId = (): string | null => {
+  const userState = useUserStore.getState();
+  if (userState.isLoggedIn && userState.user?.tenantId) {
+    return userState.user.tenantId;
+  }
+  return null;
+};
 
 export const useTenantStore = create<TenantState>()(
   persist(
@@ -34,7 +44,14 @@ export const useTenantStore = create<TenantState>()(
       selectedDate: new Date().toISOString().split('T')[0],
       bookings: [],
       
-      setCurrentTenant: (tenantId) => {
+      setCurrentTenant: (tenantId, force = false) => {
+        if (!force) {
+          const authTenantId = getAuthoritativeTenantId();
+          if (authTenantId && tenantId !== authTenantId) {
+            return;
+          }
+        }
+
         if (!tenantId) {
           set({
             currentTenantId: null,
@@ -75,21 +92,24 @@ export const useTenantStore = create<TenantState>()(
       },
       
       refreshBookings: () => {
-        const { currentTenantId, selectedDate } = get();
-        if (currentTenantId) {
-          const bookings = getBookingsByDate(currentTenantId, selectedDate);
+        const authTenantId = getAuthoritativeTenantId();
+        const effectiveTenantId = authTenantId || get().currentTenantId;
+        if (effectiveTenantId) {
+          const bookings = getBookingsByDate(effectiveTenantId, get().selectedDate);
           set({ bookings });
+        }
+      },
+
+      ensureAuthoritativeTenant: () => {
+        const authTenantId = getAuthoritativeTenantId();
+        if (authTenantId && get().currentTenantId !== authTenantId) {
+          get().setCurrentTenant(authTenantId, true);
         }
       },
     }),
     {
       name: 'tenant-storage',
-      partialize: (state) => ({ currentTenantId: state.currentTenantId }),
-      onRehydrateStorage: () => (state) => {
-        if (state?.currentTenantId) {
-          state.setCurrentTenant(state.currentTenantId);
-        }
-      },
+      partialize: () => ({}),
     }
   )
 );

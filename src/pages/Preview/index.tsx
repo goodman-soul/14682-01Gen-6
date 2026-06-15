@@ -12,11 +12,16 @@ import type { Booking, Tenant } from '../../types';
 
 const Preview: React.FC = () => {
   const navigate = useNavigate();
-  const { setCurrentTenant, setSelectedDate, selectedDate, floors, rooms, equipment, bookings, currentTenant } = useTenantStore();
+  const { setCurrentTenant, setSelectedDate, selectedDate, floors, rooms, equipment, bookings, currentTenant, currentTenantId } = useTenantStore();
   
   const [allTenants] = useState<Tenant[]>(getAllTenants());
   const [selectedTenantId, setSelectedTenantId] = useState<string>(allTenants[0]?.id || '');
   const [showIntro, setShowIntro] = useState(true);
+  const [originalTenantId, setOriginalTenantId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOriginalTenantId(currentTenantId);
+  }, []);
 
   useEffect(() => {
     if (selectedTenantId) {
@@ -26,9 +31,9 @@ const Preview: React.FC = () => {
 
   useEffect(() => {
     return () => {
-      // 离开预览页面时不重置租户，保持用户登录状态
+      setCurrentTenant(originalTenantId);
     };
-  }, []);
+  }, [originalTenantId, setCurrentTenant]);
 
   const handlePrevDay = () => {
     setSelectedDate(addDaysStr(selectedDate, -1));

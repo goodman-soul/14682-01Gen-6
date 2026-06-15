@@ -24,9 +24,7 @@ const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn } = useUserStore();
   const {
-    currentTenant,
-    currentTenantId,
-    setCurrentTenant,
+    ensureAuthoritativeTenant,
     floors,
     rooms,
     equipment,
@@ -39,14 +37,10 @@ const Settings: React.FC = () => {
   useEffect(() => {
     if (!isLoggedIn || user?.role !== 'admin') {
       navigate('/dashboard');
+      return;
     }
-  }, [isLoggedIn, user, navigate]);
-
-  useEffect(() => {
-    if (isLoggedIn && currentTenantId && !currentTenant) {
-      setCurrentTenant(currentTenantId);
-    }
-  }, [isLoggedIn, currentTenantId, currentTenant, setCurrentTenant]);
+    ensureAuthoritativeTenant();
+  }, [isLoggedIn, user, navigate, ensureAuthoritativeTenant]);
 
   if (!isLoggedIn || !user || user.role !== 'admin') {
     return null;

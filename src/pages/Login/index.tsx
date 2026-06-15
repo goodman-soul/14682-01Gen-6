@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Eye, Lock, User } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -11,13 +11,23 @@ import { cn } from '../../lib/utils';
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { allTenants, setCurrentTenant } = useTenantStore();
-  const { login } = useUserStore();
+  const { login, isLoggedIn } = useUserStore();
   
   const [selectedTenant, setSelectedTenant] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // 进入登录页时，如果不是登录态，清理预览模式残留的租户状态
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setCurrentTenant(null);
+    } else {
+      // 已登录用户直接进主页
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isLoggedIn, navigate, setCurrentTenant]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,10 +45,11 @@ const Login: React.FC = () => {
     setIsLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
+      // 注意：userStore.login 内部已经会强制用 user.tenantId 设置当前租户
+      // 所以这里不需要再调 setCurrentTenant，防止传入错误的 selectedTenant
       const success = await login(selectedTenant, username, password);
       if (success) {
-        setCurrentTenant(selectedTenant);
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
         setError('账号或密码错误');
       }

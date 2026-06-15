@@ -29,8 +29,12 @@ const BookingModal: React.FC<BookingModalProps> = ({
   initialDate,
   onSuccess,
 }) => {
-  const { rooms, currentTenantId, selectedDate, equipment, approvalRules, currentTenant, refreshBookings } = useTenantStore();
+  const { rooms, selectedDate, equipment, approvalRules, currentTenant, refreshBookings } = useTenantStore();
   const { user, refreshMyBookings, refreshPendingBookings } = useUserStore();
+  
+  // 关键：写操作必须以用户所属单位为准，不依赖 tenantStore.currentTenantId
+  // 防止预览模式切换租户后污染登录态下的预约
+  const safeTenantId = user?.tenantId!;
 
   const [step, setStep] = useState<'form' | 'result'>('form');
   const [title, setTitle] = useState('');
@@ -55,7 +59,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
   const selectedRoom = rooms.find(r => r.id === roomId);
   const duration = startTime && endTime ? getDurationMinutes(startTime, endTime) : 0;
   const hasConflict = roomId && startTime && endTime && date
-    ? checkTimeConflict(currentTenantId!, roomId, date, startTime, endTime)
+    ? checkTimeConflict(safeTenantId, roomId, date, startTime, endTime)
     : false;
 
   const needsApproval = useMemo(() => {
@@ -146,7 +150,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
     try {
       await new Promise(resolve => setTimeout(resolve, 600));
       
-      const booking = createBooking(currentTenantId!, {
+      const booking = createBooking(safeTenantId, {
         roomId,
         userId: user!.id,
         title,

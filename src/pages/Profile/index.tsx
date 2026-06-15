@@ -12,36 +12,43 @@ import { cn } from '../../lib/utils';
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn, myBookings, pendingBookings, refreshMyBookings, refreshPendingBookings } = useUserStore();
-  const { currentTenantId, rooms, refreshBookings } = useTenantStore();
+  const { rooms, refreshBookings, ensureAuthoritativeTenant } = useTenantStore();
   const [activeTab, setActiveTab] = useState<'my' | 'pending'>('my');
+  
+  const safeTenantId = user?.tenantId;
 
   React.useEffect(() => {
     if (!isLoggedIn) {
       navigate('/login');
+      return;
     }
-  }, [isLoggedIn, navigate]);
+    ensureAuthoritativeTenant();
+  }, [isLoggedIn, navigate, ensureAuthoritativeTenant]);
 
   const getRoomName = (roomId: string) => {
     return rooms.find(r => r.id === roomId)?.name || '未知会议室';
   };
 
   const handleCancelBooking = (bookingId: string) => {
+    if (!safeTenantId) return;
     if (confirm('确定要取消这个预约吗？')) {
-      cancelBooking(currentTenantId!, bookingId);
+      cancelBooking(safeTenantId, bookingId);
       refreshMyBookings();
       refreshBookings();
     }
   };
 
   const handleApprove = (bookingId: string) => {
-    approveBooking(currentTenantId!, bookingId);
+    if (!safeTenantId) return;
+    approveBooking(safeTenantId, bookingId);
     refreshPendingBookings();
     refreshMyBookings();
     refreshBookings();
   };
 
   const handleReject = (bookingId: string) => {
-    rejectBooking(currentTenantId!, bookingId);
+    if (!safeTenantId) return;
+    rejectBooking(safeTenantId, bookingId);
     refreshPendingBookings();
     refreshMyBookings();
     refreshBookings();

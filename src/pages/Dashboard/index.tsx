@@ -14,7 +14,7 @@ import type { Room, Booking } from '../../types';
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { isLoggedIn, user, myBookings, pendingBookings } = useUserStore();
-  const { selectedDate, setSelectedDate, currentTenant, currentTenantId, setCurrentTenant, bookings, rooms } = useTenantStore();
+  const { selectedDate, setSelectedDate, ensureAuthoritativeTenant, bookings, rooms } = useTenantStore();
   
   const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -26,14 +26,10 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!isLoggedIn) {
       navigate('/login');
+      return;
     }
-  }, [isLoggedIn, navigate]);
-
-  useEffect(() => {
-    if (isLoggedIn && currentTenantId && !currentTenant) {
-      setCurrentTenant(currentTenantId);
-    }
-  }, [isLoggedIn, currentTenantId, currentTenant, setCurrentTenant]);
+    ensureAuthoritativeTenant();
+  }, [isLoggedIn, navigate, ensureAuthoritativeTenant]);
 
   const handlePrevDay = () => {
     setSelectedDate(addDaysStr(selectedDate, -1));
